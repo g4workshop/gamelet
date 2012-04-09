@@ -9,15 +9,12 @@
 #ifndef gamelet_cfgdata_h
 #define gamelet_cfgdata_h
 
-#include <string>
-
 class StartupConfigure
 {
 public:
     StartupConfigure();
     bool loadFromFile(const char* filepath);
 
-    std::string serviceAddress;
     int servicePort;
     int blockCount;
     int numOfThreads;

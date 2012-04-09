@@ -17,24 +17,7 @@ typedef enum {
     ALOG_LEVEL_ERROR = 100,		// < error conditions, maybe application fail
 } alogLevel;
 
-void alog(const char *file, long line, int level, const char *format, ...)
-{
-    // @FIXME thread UNSAFE!
-    const char *lvstr = "INFO";
-    if(level == ALOG_LEVEL_ERROR)
-        lvstr = "ERROR";
-    else if(level == ALOG_LEVEL_DEBUG)
-        lvstr = "DEBUG"; 
-    
-    if(level == ALOG_LEVEL_ERROR)
-        fprintf(stdout, "%s : %s(%ld)\n", lvstr, file, line);
-    
-    va_list va;
-    va_start(va, format);
-    vfprintf(stdout, format, va);
-    va_end(va);
-    fprintf(stdout, "\n");
-}
+void alog(const char *file, long line, alogLevel level, const char *format, ...);
 
 #define ALOG_ERROR(format, args...) \
 alog(__FILE__, __LINE__, ALOG_LEVEL_ERROR, format, ##args)
@@ -42,7 +25,11 @@ alog(__FILE__, __LINE__, ALOG_LEVEL_ERROR, format, ##args)
 #define ALOG_INFO(format, args...) \
 alog(__FILE__, __LINE__, ALOG_LEVEL_INFO, format, ##args)
 
+#ifdef NON_ALOG_DEBUG
+#define ALOG_DEBUG(format, args...)
+#else
 #define ALOG_DEBUG(format, args...) \
 alog(__FILE__, __LINE__, ALOG_LEVEL_DEBUG, format, ##args)
+#endif
 
 #endif

@@ -10,7 +10,6 @@
 
 StartupConfigure::StartupConfigure(){
     // @TODO read it from file
-    serviceAddress = "localhost";
     servicePort = 9090;
     blockCount = 9;
     // normally the worker count is coresponse to the CPU(kernel) count, read it from the system

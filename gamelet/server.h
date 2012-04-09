@@ -19,9 +19,9 @@ public:
     static Server &instance();
     // run the server, this function will block until the server stop running
     bool run(StartupConfigure& cfg);
-    void stop();
+    
 private:
-    Server(){};
+    Server();
     ~Server();
     
 private:

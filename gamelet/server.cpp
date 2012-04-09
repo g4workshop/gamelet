@@ -7,6 +7,8 @@
 //
 
 #include "server.h"
+#include "client.h"
+#include "alog.h"
 
 #include <string.h>
 #include <errno.h>
@@ -27,13 +29,18 @@
 #include <event2/util.h>
 #include <event2/event.h>
 
-#include "alog.h"
-
 static void listener_cb(struct evconnlistener *, evutil_socket_t, 
                         struct sockaddr *, int socklen, void *);
-static void conn_writecb(struct bufferevent *, void *);
-static void conn_eventcb(struct bufferevent *, short, void *);
+static void listener_errorcb(struct evconnlistener *listener, void *);
 static void signal_cb(evutil_socket_t, short, void *);
+
+Server::Server(){
+}
+
+Server::~Server(){
+    if(base)
+        event_base_free(base);
+}
 
 Server& Server::instance(){
     static Server s_server;
@@ -52,52 +59,61 @@ bool Server::run(StartupConfigure &cfg){
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(cfg.servicePort);
     
-	struct evconnlistener *listener = evconnlistener_new_bind(base, listener_cb, (void *)base,
-                                       LEV_OPT_REUSEABLE|LEV_OPT_CLOSE_ON_FREE, -1,
-                                       (struct sockaddr*)&sin,
-                                       sizeof(sin));
+	struct evconnlistener *listener = evconnlistener_new_bind(base, 
+                                        listener_cb, 
+                                        (void *)base,
+                                        LEV_OPT_REUSEABLE|LEV_OPT_CLOSE_ON_FREE, 
+                                        -1,
+                                        (struct sockaddr*)&sin,
+                                        sizeof(sin));
     
-	if (!listener) {
+	if (!listener){
 		ALOG_ERROR("Could not create a listener!");
 		return false;
 	}
-    
-//	if (workqueue_init(&workqueue, NUM_THREADS)) {
-//		perror("Failed to create work queue");
-//		close(listenfd);
-//		workqueue_shutdown(&workqueue);
-//		return 1;
-//	}
-//    
-    struct event *signal_event = evsignal_new(base, SIGINT, signal_cb, (void *)base);
+    evconnlistener_set_error_cb(listener, listener_errorcb);
+    // the ctrl+c break event
+    struct event *signal_event = evsignal_new(base, 
+                                              SIGINT, 
+                                              signal_cb, 
+                                              (void *)base);
     
 	if (!signal_event || event_add(signal_event, NULL)<0) {
-		ALOG_ERROR("Could not create/add a signal event!\n");
-		return 1;
+		ALOG_ERROR("Could not create/add SIGINT event!");
+		return false;
 	}
+    
     ALOG_INFO("Server running...");
 	event_base_dispatch(base);
+    ALOG_INFO("Server stoped.");
+    
 	evconnlistener_free(listener);
 	event_free(signal_event);
     
 	return true;
 }
 
-void Server::stop(){
-	struct timeval delay = { 2, 0 };	
-    event_base_loopexit(base, &delay);
+static void listener_cb(struct evconnlistener *listener, evutil_socket_t fd,
+            struct sockaddr *sa, int socklen, void *user_data)
+{
+	struct event_base *base = (struct event_base *)user_data;
+    Client *client = ClientManager::instance().newClient(base, fd);
+	if (!client) {
+        ALOG_ERROR("Error constructing bufferevent/evbuffer!");
+		event_base_loopbreak(base);
+		return;
+	}
+    ALOG_INFO("[%p] Client accepted", client);
 }
 
-Server::~Server(){
-    if(base)
-        event_base_free(base);
+static void listener_errorcb(struct evconnlistener *listener, void *user_data){
+    ALOG_ERROR("Got an error on the connection: %s", 
+               evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
 }
 
 static void signal_cb(evutil_socket_t sig, short events, void *user_data){
-	struct event_base *base = (struct event_base*)user_data;
-	struct timeval delay = { 2, 0 };
-    
-	ALOG_INFO("Caught an interrupt signal; exiting cleanly in two seconds.");
-	
-    event_base_loopexit(base, &delay);
+    ALOG_INFO("Caught an interrupt signal; exiting cleanly.");
+    struct event_base *base = (struct event_base *)user_data;
+	struct timeval delay = { 2, 0 };  
+	event_base_loopexit(base, &delay);
 }

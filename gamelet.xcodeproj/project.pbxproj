@@ -7,8 +7,17 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C433441B1532BBB600B9EA9E /* client.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C433441A1532BBB600B9EA9E /* client.cpp */; };
 		C4DEC4B4152D98A5002AC38B /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C4DEC4B3152D98A5002AC38B /* main.cpp */; };
 		C4DEC4B6152D98A5002AC38B /* gamelet.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = C4DEC4B5152D98A5002AC38B /* gamelet.1 */; };
+		C4DEC4C2152D98C4002AC38B /* libevent.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = C4DEC4BD152D98C4002AC38B /* libevent.dylib */; };
+		C4DEC4C3152D98C4002AC38B /* libevent_core.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = C4DEC4BE152D98C4002AC38B /* libevent_core.dylib */; };
+		C4DEC4C4152D98C4002AC38B /* libevent_extra.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = C4DEC4BF152D98C4002AC38B /* libevent_extra.dylib */; };
+		C4DEC4C5152D98C4002AC38B /* libevent_openssl.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = C4DEC4C0152D98C4002AC38B /* libevent_openssl.dylib */; };
+		C4DEC4C6152D98C4002AC38B /* libevent_pthreads.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = C4DEC4C1152D98C4002AC38B /* libevent_pthreads.dylib */; };
+		C4DEC4C9152D9958002AC38B /* cfgdata.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C4DEC4C8152D9958002AC38B /* cfgdata.cpp */; };
+		C4DEC4CC152D9C72002AC38B /* server.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C4DEC4CB152D9C72002AC38B /* server.cpp */; };
+		C4DEC4D4152DAA3F002AC38B /* alog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C4DEC4D3152DAA3F002AC38B /* alog.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -25,9 +34,22 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		C43344191532BBAB00B9EA9E /* client.h */ = {isa = PBXFileReference; path = client.h; sourceTree = "<group>"; };
+		C433441A1532BBB600B9EA9E /* client.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = client.cpp; sourceTree = "<group>"; };
 		C4DEC4AF152D98A4002AC38B /* gamelet */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = gamelet; sourceTree = BUILT_PRODUCTS_DIR; };
 		C4DEC4B3152D98A5002AC38B /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		C4DEC4B5152D98A5002AC38B /* gamelet.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = gamelet.1; sourceTree = "<group>"; };
+		C4DEC4BD152D98C4002AC38B /* libevent.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libevent.dylib; path = usr/local/lib/libevent.dylib; sourceTree = SDKROOT; };
+		C4DEC4BE152D98C4002AC38B /* libevent_core.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libevent_core.dylib; path = usr/local/lib/libevent_core.dylib; sourceTree = SDKROOT; };
+		C4DEC4BF152D98C4002AC38B /* libevent_extra.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libevent_extra.dylib; path = usr/local/lib/libevent_extra.dylib; sourceTree = SDKROOT; };
+		C4DEC4C0152D98C4002AC38B /* libevent_openssl.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libevent_openssl.dylib; path = usr/local/lib/libevent_openssl.dylib; sourceTree = SDKROOT; };
+		C4DEC4C1152D98C4002AC38B /* libevent_pthreads.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libevent_pthreads.dylib; path = usr/local/lib/libevent_pthreads.dylib; sourceTree = SDKROOT; };
+		C4DEC4C7152D9907002AC38B /* cfgdata.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = cfgdata.h; sourceTree = "<group>"; };
+		C4DEC4C8152D9958002AC38B /* cfgdata.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = cfgdata.cpp; sourceTree = "<group>"; };
+		C4DEC4CA152D9C66002AC38B /* server.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = server.h; sourceTree = "<group>"; };
+		C4DEC4CB152D9C72002AC38B /* server.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = server.cpp; sourceTree = "<group>"; };
+		C4DEC4D2152DA6E1002AC38B /* alog.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = alog.h; sourceTree = "<group>"; };
+		C4DEC4D3152DAA3F002AC38B /* alog.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = alog.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -35,6 +57,11 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C4DEC4C2152D98C4002AC38B /* libevent.dylib in Frameworks */,
+				C4DEC4C3152D98C4002AC38B /* libevent_core.dylib in Frameworks */,
+				C4DEC4C4152D98C4002AC38B /* libevent_extra.dylib in Frameworks */,
+				C4DEC4C5152D98C4002AC38B /* libevent_openssl.dylib in Frameworks */,
+				C4DEC4C6152D98C4002AC38B /* libevent_pthreads.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -45,6 +72,7 @@
 			isa = PBXGroup;
 			children = (
 				C4DEC4B2152D98A5002AC38B /* gamelet */,
+				C4DEC4BC152D98B0002AC38B /* libs */,
 				C4DEC4B0152D98A4002AC38B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -60,10 +88,30 @@
 		C4DEC4B2152D98A5002AC38B /* gamelet */ = {
 			isa = PBXGroup;
 			children = (
-				C4DEC4B3152D98A5002AC38B /* main.cpp */,
 				C4DEC4B5152D98A5002AC38B /* gamelet.1 */,
+				C4DEC4B3152D98A5002AC38B /* main.cpp */,
+				C4DEC4D2152DA6E1002AC38B /* alog.h */,
+				C4DEC4D3152DAA3F002AC38B /* alog.cpp */,
+				C4DEC4C7152D9907002AC38B /* cfgdata.h */,
+				C4DEC4C8152D9958002AC38B /* cfgdata.cpp */,
+				C4DEC4CA152D9C66002AC38B /* server.h */,
+				C4DEC4CB152D9C72002AC38B /* server.cpp */,
+				C43344191532BBAB00B9EA9E /* client.h */,
+				C433441A1532BBB600B9EA9E /* client.cpp */,
 			);
 			path = gamelet;
+			sourceTree = "<group>";
+		};
+		C4DEC4BC152D98B0002AC38B /* libs */ = {
+			isa = PBXGroup;
+			children = (
+				C4DEC4BD152D98C4002AC38B /* libevent.dylib */,
+				C4DEC4BE152D98C4002AC38B /* libevent_core.dylib */,
+				C4DEC4BF152D98C4002AC38B /* libevent_extra.dylib */,
+				C4DEC4C0152D98C4002AC38B /* libevent_openssl.dylib */,
+				C4DEC4C1152D98C4002AC38B /* libevent_pthreads.dylib */,
+			);
+			name = libs;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -118,6 +166,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				C4DEC4B4152D98A5002AC38B /* main.cpp in Sources */,
+				C4DEC4C9152D9958002AC38B /* cfgdata.cpp in Sources */,
+				C4DEC4CC152D9C72002AC38B /* server.cpp in Sources */,
+				C4DEC4D4152DAA3F002AC38B /* alog.cpp in Sources */,
+				C433441B1532BBB600B9EA9E /* client.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -202,6 +254,7 @@
 				C4DEC4BB152D98A5002AC38B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
