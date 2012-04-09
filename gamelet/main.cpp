@@ -11,11 +11,6 @@
 #include "alog.h"
 #include "server.h"
 
-#include <signal.h>
-#include <stdio.h>
-#include <iostream>
-using namespace std;
-
 #define CFG_FILE "./gamelet.conf"
 
 static void setupsig();
