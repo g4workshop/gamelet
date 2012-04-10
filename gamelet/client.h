@@ -1,6 +1,6 @@
 //
 //  client_manager.h
-//  gamelet
+//  client manager
 //
 //  Created by Dawen Rie on 12-4-9.
 //  Copyright (c) 2012年 G4 Workshop. All rights reserved.
@@ -11,7 +11,8 @@
 
 #include <event2/util.h>
 
-#include <set>
+#include <string>
+#include <map>
 
 class bufferevent;
 class evbuffer;
@@ -26,6 +27,7 @@ struct Client{
     // Other service specail information...
 };
 
+typedef std::map<std::string, Client*> ClientMap;
 
 class ClientManager{
 public:
@@ -33,12 +35,12 @@ public:
     Client *newClient(struct event_base *base, evutil_socket_t fd);
     void delClient(Client *client);
     
-protected:
+private:
     ClientManager();
     ~ClientManager();
     
 private:
-
+    ClientMap clients;
 };
 
 #endif
