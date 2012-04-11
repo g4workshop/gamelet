@@ -7,7 +7,7 @@
 //
 
 #include "server.h"
-#include "client.h"
+#include "player.h"
 #include "alog.h"
 
 #include <string.h>
@@ -97,13 +97,12 @@ static void listener_cb(struct evconnlistener *listener, evutil_socket_t fd,
             struct sockaddr *sa, int socklen, void *user_data)
 {
 	struct event_base *base = (struct event_base *)user_data;
-    Client *client = ClientManager::instance().newClient(base, fd);
+    Player *client = PlayerManager::instance().newPlayer(base, fd);
 	if (!client) {
         ALOG_ERROR("Error constructing bufferevent/evbuffer!");
 		event_base_loopbreak(base);
 		return;
 	}
-    ALOG_INFO("[%p] Client accepted", client);
 }
 
 static void listener_errorcb(struct evconnlistener *listener, void *user_data){

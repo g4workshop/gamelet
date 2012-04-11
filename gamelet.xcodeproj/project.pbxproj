@@ -7,8 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		C433441B1532BBB600B9EA9E /* client.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C433441A1532BBB600B9EA9E /* client.cpp */; };
-		C438FCDD15342BFC007D1188 /* makefile in Sources */ = {isa = PBXBuildFile; fileRef = C438FCDC15342BFC007D1188 /* makefile */; };
+		C433441B1532BBB600B9EA9E /* player.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C433441A1532BBB600B9EA9E /* player.cpp */; };
 		C4DEC4B4152D98A5002AC38B /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C4DEC4B3152D98A5002AC38B /* main.cpp */; };
 		C4DEC4B6152D98A5002AC38B /* gamelet.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = C4DEC4B5152D98A5002AC38B /* gamelet.1 */; };
 		C4DEC4C2152D98C4002AC38B /* libevent.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = C4DEC4BD152D98C4002AC38B /* libevent.dylib */; };
@@ -35,10 +34,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		C43344191532BBAB00B9EA9E /* client.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = client.h; sourceTree = "<group>"; };
-		C433441A1532BBB600B9EA9E /* client.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = client.cpp; sourceTree = "<group>"; };
+		C43344191532BBAB00B9EA9E /* player.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = player.h; sourceTree = "<group>"; };
+		C433441A1532BBB600B9EA9E /* player.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = player.cpp; sourceTree = "<group>"; };
 		C433442C1532DA7B00B9EA9E /* README */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
-		C438FCDC15342BFC007D1188 /* makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = makefile; sourceTree = "<group>"; };
 		C4DEC4AF152D98A4002AC38B /* gamelet */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = gamelet; sourceTree = BUILT_PRODUCTS_DIR; };
 		C4DEC4B3152D98A5002AC38B /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		C4DEC4B5152D98A5002AC38B /* gamelet.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = gamelet.1; sourceTree = "<group>"; };
@@ -91,7 +89,6 @@
 		C4DEC4B2152D98A5002AC38B /* gamelet */ = {
 			isa = PBXGroup;
 			children = (
-				C438FCDC15342BFC007D1188 /* makefile */,
 				C4DEC4B5152D98A5002AC38B /* gamelet.1 */,
 				C4DEC4B3152D98A5002AC38B /* main.cpp */,
 				C4DEC4D2152DA6E1002AC38B /* alog.h */,
@@ -100,8 +97,8 @@
 				C4DEC4C8152D9958002AC38B /* cfgdata.cpp */,
 				C4DEC4CA152D9C66002AC38B /* server.h */,
 				C4DEC4CB152D9C72002AC38B /* server.cpp */,
-				C43344191532BBAB00B9EA9E /* client.h */,
-				C433441A1532BBB600B9EA9E /* client.cpp */,
+				C43344191532BBAB00B9EA9E /* player.h */,
+				C433441A1532BBB600B9EA9E /* player.cpp */,
 				C433442C1532DA7B00B9EA9E /* README */,
 			);
 			path = gamelet;
@@ -174,8 +171,7 @@
 				C4DEC4C9152D9958002AC38B /* cfgdata.cpp in Sources */,
 				C4DEC4CC152D9C72002AC38B /* server.cpp in Sources */,
 				C4DEC4D4152DAA3F002AC38B /* alog.cpp in Sources */,
-				C433441B1532BBB600B9EA9E /* client.cpp in Sources */,
-				C438FCDD15342BFC007D1188 /* makefile in Sources */,
+				C433441B1532BBB600B9EA9E /* player.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -230,6 +226,7 @@
 		C4DEC4BA152D98A5002AC38B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -237,6 +234,7 @@
 		C4DEC4BB152D98A5002AC38B /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
