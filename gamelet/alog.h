@@ -18,6 +18,10 @@ typedef enum {
 } alogLevel;
 
 void alog(const char *file, long line, alogLevel level, const char *format, ...);
+void alogbin(unsigned char *buf, size_t length);
+
+class evbuffer;
+void alogbuffer(evbuffer *evbuff);
 
 #define ALOG_ERROR(format, args...) \
 alog(__FILE__, __LINE__, ALOG_LEVEL_ERROR, format, ##args)

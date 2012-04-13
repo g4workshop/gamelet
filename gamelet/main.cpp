@@ -11,12 +11,15 @@
 #include "alog.h"
 #include "server.h"
 
+#include "cmd.h"
+#include <event2/buffer.h>
+
 #define CFG_FILE "./gamelet.conf"
 
 static void setupsig();
 
 int main(int argc, const char * argv[])
-{
+{    
     StartupConfigure cfg;
     if (!cfg.loadFromFile(CFG_FILE)) {
         ALOG_ERROR("failed to load configure from file:%s", CFG_FILE);

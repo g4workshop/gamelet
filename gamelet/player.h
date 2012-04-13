@@ -16,15 +16,28 @@
 #include <set>
 #include <list>
 
+#include "cmd.h"
+
 class bufferevent;
 class evbuffer;
 
 class Group;
+class Command;
+
 // Player connection data
 struct Player{
     Player();
     bool isNPC();
     bool attributeMatch(Player *other);
+    void handleCommand();
+    void forwardToPlayer(std::string &userid, short length);
+    void forwardToGroup(short length);
+    
+    void login();
+    void logout();
+    void match();
+    void leaveMatch();
+    
    	// The bufferedevent for this player.
 	struct bufferevent *bev;
 	// The recieved command buffer.
@@ -35,6 +48,7 @@ struct Player{
     
     // player attributes
     std::string userid;
+    std::string passwd;
     std::string gameid;
     bool NPC;
     time_t loginTime;
@@ -64,10 +78,10 @@ public:
     static PlayerManager &instance();
     Player *newPlayer(struct event_base *base, evutil_socket_t fd);
     void deletePlayer(Player *player);
-    bool login(Player *player);
+    bool login(Player *player, LoginCommand &cmd);
     bool logout(Player *player);
     
-    Group *matchGroup(Player* player);
+    Group *matchGroup(Player* player, MatchCommand &cmd);
     bool leaveGroup(Player *player);
     
 private:
@@ -75,8 +89,8 @@ private:
     ~PlayerManager();
     
 private:
-    std::set<Player *>players;
-    std::set<Group *>groups;
+    std::set<Player *> players;
+    std::set<Group *> groups;
 };
 
 #endif

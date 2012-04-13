@@ -8,6 +8,7 @@
 
 #include "player.h"
 #include "alog.h"
+#include "cmd.h"
 
 #include <errno.h>
 
@@ -19,6 +20,7 @@
 static void conn_readcb(struct bufferevent *,  void *);
 static void conn_writecb(struct bufferevent *, void *);
 static void conn_eventcb(struct bufferevent *, short, void *);
+
 Player::Player(){
     NPC = false;
     bev = NULL;
@@ -35,6 +37,158 @@ bool Player::attributeMatch(Player *other){
         return false;
     // @TODO 
     return attributes == other->attributes;
+}
+
+void Player::handleCommand(){
+    if (!Command::isCommandComplete(commandBuffer)){
+        ALOG_DEBUG("[%p] command not complete", this);
+        alogbuffer(commandBuffer);
+        return ;
+    }
+    
+    Command cmd;
+    cmd.decodeHeader(commandBuffer);
+    if (cmd.indicator == SID_SERVER){
+        size_t removedSize = evbuffer_get_length(commandBuffer);
+        if (!cmd.parse(commandBuffer)){
+            ALOG_INFO("parse command error");
+            return ;
+        }
+        ALOG_INFO("[%p] command(%d)", this, (int)cmd.msgid); 
+        switch (cmd.msgid) {
+            case CMD_LOGIN:
+                login();
+                break;
+            case CMD_LOGOUT:
+                logout();
+                break;
+            case CMD_MATCH:
+                match();
+                break;
+            case CMD_LEAVE_MATCH:
+                leaveMatch();
+                break;
+            default:
+                break;
+        }
+        removedSize -= evbuffer_get_length(commandBuffer);
+        size_t eatSize = cmd.length+2;
+        if (eatSize > removedSize){
+            eatSize -= removedSize;
+            evbuffer_drain(commandBuffer, eatSize);
+        }
+    }
+    else {
+        //ALOG_DEBUG("indicator = %d", (int)cmd.indicator);
+        switch (cmd.indicator) {
+            case SID_PLAYER:
+                forwardToPlayer(cmd.targetPlayer, cmd.length);
+                break;
+            case SID_GROUP:
+                forwardToGroup(cmd.length);
+                break;
+            default:
+                ALOG_INFO("not handle %d", cmd.indicator);
+                break;
+        }
+    }
+}
+
+void Player::forwardToPlayer(std::string &userid, short length){
+    ALOG_INFO("[%p] forward to %s", this, userid.c_str());
+}
+
+void Player::forwardToGroup(short length){
+    if (group == NULL)
+    {
+        ALOG_INFO("[%p] group is null", this);
+        return ;
+    }
+    size_t sendLength = length+2;
+    unsigned char *data = new unsigned char[sendLength];
+    evbuffer_remove(commandBuffer, data, sendLength);
+    for (auto it = group->players.begin(); it != group->players.end(); ++it) {
+        if( *it == this)
+            continue;
+        bufferevent_write((*it)->bev, data, sendLength);
+        ALOG_INFO("[%p] froward to group player[%p]", this, *it);
+        alogbin(data, sendLength);
+    }
+    delete data;
+}
+
+void Player::login(){
+    LoginCommand loginCmd;
+    loginCmd.parse(commandBuffer);
+    if (PlayerManager::instance().login(this, loginCmd))
+    {
+        LoginResponse resp;
+        resp.targetPlayer = loginCmd.targetPlayer;
+        resp.result = 0;
+        evbuffer *respevbuff = evbuffer_new();
+        resp.encode(respevbuff);
+        bufferevent_write_buffer(bev, respevbuff);
+        evbuffer_free(respevbuff);
+        ALOG_INFO("[%p] login response", this);
+    }
+}
+
+void Player::logout(){
+    LogoutCommand logouCmd;
+    logouCmd.parse(commandBuffer);
+    PlayerManager::instance().logout(this);
+}
+
+void Player::match(){
+    MatchCommand matchCmd;
+    matchCmd.parse(commandBuffer);
+    Group *group = PlayerManager::instance().matchGroup(this, matchCmd);
+    if (!group) {
+        ALOG_INFO("[%p] can't match a game", this);
+        // response failed?
+        return ;
+    }
+    else {
+        ALOG_INFO("[%p] match a game group[%p]", this, group);
+        PlayerJoinEvent pjevent;
+        pjevent.result = 0;
+        for (auto it = group->players.begin(); it != group->players.end(); ++it) {
+            pjevent.playerid.push_back((*it)->userid);
+        }
+        evbuffer *evtjoinbuff = evbuffer_new();
+        pjevent.encode(evtjoinbuff);
+        size_t length = evbuffer_get_length(evtjoinbuff);
+        unsigned char *data = new unsigned char[length];
+        evbuffer_copyout(evtjoinbuff, data, length);
+        for (auto it = group->players.begin(); it != group->players.end(); ++it) {
+            //alogbin(data, length);
+            bufferevent_write((*it)->bev, data, length);
+        }
+        delete data;
+        evbuffer_free(evtjoinbuff);
+        
+        if (group->isEnoughToPlay()){
+            // just modify the exsting message
+            pjevent.msgid = EVT_GAME_START;
+            
+            evbuffer *evtjoinbuff = evbuffer_new();
+            pjevent.encode(evtjoinbuff);
+            size_t length = evbuffer_get_length(evtjoinbuff);
+            unsigned char *data = new unsigned char[length];
+            evbuffer_copyout(evtjoinbuff, data, length);
+            for (auto it = group->players.begin(); it != group->players.end(); ++it) {
+                ALOG_INFO("[%p] send start notify", (*it));
+                bufferevent_write((*it)->bev, data, length);
+            }
+            delete data;
+            evbuffer_free(evtjoinbuff);
+ 
+        }
+    }
+}
+
+void Player::leaveMatch(){
+    
 }
 
 Group::Group(){
@@ -122,6 +276,7 @@ Player *PlayerManager::newPlayer(struct event_base *base, evutil_socket_t fd) {
 
 void PlayerManager::deletePlayer(Player *player){
     if(player) {
+        logout(player);
         if(player->bev)
             bufferevent_free(player->bev);
         if(player->commandBuffer)
@@ -131,14 +286,18 @@ void PlayerManager::deletePlayer(Player *player){
     }
 }
 
-bool PlayerManager::login(Player *player){
+bool PlayerManager::login(Player *player, LoginCommand &cmd){
     if (player != NULL){
+        player->userid = cmd.userid;
+        player->passwd = cmd.passwd;
+        player->gameid = cmd.gameid;
+        
         player->loginTime = time(NULL);
         players.insert(player);
-        ALOG_INFO("[%p] player login, userid(%s) gameid(%s)", 
+        ALOG_INFO("[%p] player login, userid(%s) password(%s)", 
                   player, 
                   player->userid.c_str(),
-                  player->gameid.c_str());
+                  player->passwd.c_str());
     }
     
     return true;
@@ -146,15 +305,34 @@ bool PlayerManager::login(Player *player){
 
 bool PlayerManager::logout(Player *player){
     if (player != NULL){
-        ALOG_INFO("[%p] player login", player);
+        ALOG_INFO("[%p] player logout", player);
         leaveGroup(player);
         players.erase(player);
     }
     return true;
 }
 
-Group *PlayerManager::matchGroup(Player* player){
-    return NULL;
+Group *PlayerManager::matchGroup(Player* player, MatchCommand &cmd){
+    Group *group = NULL;
+    for (auto it = groups.begin(); it != groups.end(); ++it){
+        if ( !(*it)->isEnoughPlayer()){
+            group = *it;
+            break;
+        }
+    }
+    if (group == NULL){
+        group = new Group();
+        groups.insert(group);
+        group->minimum = cmd.minimum;
+        group->maxima = cmd.maxima;
+        ALOG_INFO("[%p] group created(%d, %d)", 
+                  group, 
+                  group->minimum,
+                  group->maxima);
+    }
+    group->add(player);
+    player->group = group;
+    return group;
 }
 
 bool PlayerManager::leaveGroup(Player *player){
@@ -171,9 +349,7 @@ static void conn_readcb(struct bufferevent *bev, void *user_data){
 	Player *player = (Player *)user_data;
     
     evbuffer_add_buffer(player->commandBuffer, bufferevent_get_input(bev));
-    if (bufferevent_write_buffer(bev, player->commandBuffer)) {
-        ALOG_ERROR("Error sending data to player!");
-	}
+    player->handleCommand();
 }
 
 // Called by libevent when there is data to write.
@@ -182,9 +358,7 @@ static void conn_writecb(struct bufferevent *bev, void *user_data) {
 
 static void conn_eventcb(struct bufferevent *bev, short events, void *user_data)
 {
-	if (events & BEV_EVENT_EOF) {
-		ALOG_INFO("Connection closed.");
-	} else if (events & BEV_EVENT_ERROR) {
+    if (events & BEV_EVENT_ERROR) {
 		ALOG_ERROR("Got an error on the connection: %s.", 
                   evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
 	}
