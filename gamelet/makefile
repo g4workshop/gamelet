@@ -10,6 +10,7 @@ OBJS = main.o \
 	   server.o \
 	   alog.o \
 	   cfgdata.o \
+	   packet.o \
 	   cmd.o 
 
 $(APP): $(OBJS)
