@@ -1,6 +1,6 @@
 APP := gamelet
 CPP := g++
-CFLAGS := -O2 -std=c++0x
+CFLAGS := -Wall -O2 -std=c++0x
 LDFLAGS := -O2 -levent -lpthread
 
 all: $(APP)
