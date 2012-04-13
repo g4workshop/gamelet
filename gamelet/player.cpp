@@ -11,6 +11,7 @@
 #include "cmd.h"
 
 #include <errno.h>
+#include <string.h>
 
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
@@ -35,7 +36,7 @@ bool Player::isNPC(){
 bool Player::attributeMatch(Player *other){
     if(other == NULL)
         return false;
-    // @TODO 
+    // @TODO
     return attributes == other->attributes;
 }
 
@@ -45,7 +46,7 @@ void Player::handleCommand(){
         alogbuffer(commandBuffer);
         return ;
     }
-    
+
     Command cmd;
     cmd.decodeHeader(commandBuffer);
     if (cmd.indicator == SID_SERVER){
@@ -54,7 +55,7 @@ void Player::handleCommand(){
             ALOG_INFO("parse command error");
             return ;
         }
-        ALOG_INFO("[%p] command(%d)", this, (int)cmd.msgid); 
+        ALOG_INFO("[%p] command(%d)", this, (int)cmd.msgid);
         switch (cmd.msgid) {
             case CMD_LOGIN:
                 login();
@@ -166,11 +167,11 @@ void Player::match(){
         }
         delete data;
         evbuffer_free(evtjoinbuff);
-        
+
         if (group->isEnoughToPlay()){
             // just modify the exsting message
             pjevent.msgid = EVT_GAME_START;
-            
+
             evbuffer *evtjoinbuff = evbuffer_new();
             pjevent.encode(evtjoinbuff);
             size_t length = evbuffer_get_length(evtjoinbuff);
@@ -182,13 +183,13 @@ void Player::match(){
             }
             delete data;
             evbuffer_free(evtjoinbuff);
- 
+
         }
     }
 }
 
 void Player::leaveMatch(){
-    
+
 }
 
 Group::Group(){
@@ -224,7 +225,7 @@ bool Group::isEmpty(){
 }
 
 bool Group::isEnoughToPlay(){
-    return players.size() >= minimum;
+    return (int)players.size() >= minimum;
 }
 
 bool Group::isEnoughPlayer(){
@@ -238,7 +239,7 @@ bool Group::isEnoughPlayer(){
 }
 
 bool Group::isFull(){
-    return players.size() >= maxima;
+    return (int)players.size() >= maxima;
 }
 
 PlayerManager::PlayerManager(){
@@ -257,12 +258,12 @@ Player *PlayerManager::newPlayer(struct event_base *base, evutil_socket_t fd) {
     player->bev = bufferevent_socket_new(base, fd, BEV_OPT_CLOSE_ON_FREE);
     player->commandBuffer = evbuffer_new();
     if (player->bev && player->commandBuffer) {
-        bufferevent_setcb(player->bev, 
-                          conn_readcb, 
-                          conn_writecb, 
-                          conn_eventcb, 
+        bufferevent_setcb(player->bev,
+                          conn_readcb,
+                          conn_writecb,
+                          conn_eventcb,
                           player);
-        
+
         //bufferevent_enable(player->bev, EV_WRITE);
         bufferevent_enable(player->bev, EV_READ);
         ALOG_INFO("[%p] new player", player);
@@ -291,15 +292,15 @@ bool PlayerManager::login(Player *player, LoginCommand &cmd){
         player->userid = cmd.userid;
         player->passwd = cmd.passwd;
         player->gameid = cmd.gameid;
-        
+
         player->loginTime = time(NULL);
         players.insert(player);
-        ALOG_INFO("[%p] player login, userid(%s) password(%s)", 
-                  player, 
+        ALOG_INFO("[%p] player login, userid(%s) password(%s)",
+                  player,
                   player->userid.c_str(),
                   player->passwd.c_str());
     }
-    
+
     return true;
 }
 
@@ -325,8 +326,8 @@ Group *PlayerManager::matchGroup(Player* player, MatchCommand &cmd){
         groups.insert(group);
         group->minimum = cmd.minimum;
         group->maxima = cmd.maxima;
-        ALOG_INFO("[%p] group created(%d, %d)", 
-                  group, 
+        ALOG_INFO("[%p] group created(%d, %d)",
+                  group,
                   group->minimum,
                   group->maxima);
     }
@@ -347,7 +348,7 @@ bool PlayerManager::leaveGroup(Player *player){
 // Called by libevent when there is data to read.
 static void conn_readcb(struct bufferevent *bev, void *user_data){
 	Player *player = (Player *)user_data;
-    
+
     evbuffer_add_buffer(player->commandBuffer, bufferevent_get_input(bev));
     player->handleCommand();
 }
@@ -359,11 +360,11 @@ static void conn_writecb(struct bufferevent *bev, void *user_data) {
 static void conn_eventcb(struct bufferevent *bev, short events, void *user_data)
 {
     if (events & BEV_EVENT_ERROR) {
-		ALOG_ERROR("Got an error on the connection: %s.", 
+		ALOG_ERROR("Got an error on the connection: %s.",
                   evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
 	}
-    
-	// None of the other events can happen here, 
+
+	// None of the other events can happen here,
     // since we haven't enabled timeouts
 	Player *player = (Player *)user_data;
     PlayerManager::instance().deletePlayer(player);

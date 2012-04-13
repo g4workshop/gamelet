@@ -39,11 +39,11 @@ bool Command::isCommandComplete(evbuffer *evbuf){
     size_t buflen = evbuffer_get_length(evbuf);
     if (buflen < 2)
         return false;
-    
+
     unsigned char lenbuf[2];
     evbuffer_copyout(evbuf, lenbuf, 2);
     short len = get16(lenbuf);
-    if (buflen-2 < len)
+    if (buflen-2 < (size_t)len)
         return false;
     return true;
 }
@@ -67,7 +67,7 @@ bool Command::parse(evbuffer *evbuf){
     if (evbuffer_remove(evbuf, lenbuf, 2) != 2)
         return false;
     length = get16(lenbuf);
-    
+
     if (evbuffer_remove(evbuf, &indicator, 1) != 1)
         return false;
 
@@ -134,7 +134,7 @@ bool Command::parseObjNumber(evbuffer *evbuf, int &num){
         unsigned char numbuf[4];
         if (evbuffer_remove(evbuf, numbuf, 4) != 4)
             return false;
-        
+
         num = get32(numbuf);
     }
     return false;
@@ -154,11 +154,11 @@ void Command::encodeObjString(evbuffer *evbuff, std::string &str){
 }
 
 void Command::encodeObjNumber(evbuffer *evbuff, char num){
-    
+
 }
 
 void Command::encodeObjNumber(evbuffer *evbuff, int num){
-    
+
 }
 
 evbuffer *Command::encode(){
@@ -197,7 +197,7 @@ void LoginResponse::encode(evbuffer *evbuff){
     evbuffer *tmp = Command::encode();
     // @ TODO encode username
     unsigned char count = 0;
-    evbuffer_add(tmp, &count, 1);    
+    evbuffer_add(tmp, &count, 1);
     //
     finalize(evbuff, tmp);
 }
@@ -226,16 +226,16 @@ void PlayerJoinEvent::encode(evbuffer *evbuff){
     evbuffer *tmp = Command::encode();
     unsigned char arraycount = 1;
     evbuffer_add(tmp, &arraycount, 1);
-    
+
     // netpair
     unsigned char dummy[] = {0x04, 0x01, 0x00, 0x03};
     evbuffer_add(tmp, dummy, 4);
-    
+
     unsigned char count = (unsigned char)playerid.size();
     evbuffer_add(tmp, &count, 1);
     for (auto it = playerid.begin(); it != playerid.end(); ++it){
         encodeObjString(tmp, *it);
     }
-    
+
     finalize(evbuff, tmp);
 }
