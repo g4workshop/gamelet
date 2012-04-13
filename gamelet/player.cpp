@@ -41,38 +41,6 @@ bool Player::attributeMatch(Player *other){
 }
 
 void Player::handleCommand(){
-<<<<<<< HEAD
-    if (!Command::isCommandComplete(commandBuffer)){
-        ALOG_DEBUG("[%p] command not complete", this);
-        alogbuffer(commandBuffer);
-        return ;
-    }
-
-    Command cmd;
-    cmd.decodeHeader(commandBuffer);
-    if (cmd.indicator == SID_SERVER){
-        size_t removedSize = evbuffer_get_length(commandBuffer);
-        if (!cmd.parse(commandBuffer)){
-            ALOG_INFO("parse command error");
-            return ;
-        }
-        ALOG_INFO("[%p] command(%d)", this, (int)cmd.msgid);
-        switch (cmd.msgid) {
-            case CMD_LOGIN:
-                login();
-                break;
-            case CMD_LOGOUT:
-                logout();
-                break;
-            case CMD_MATCH:
-                match();
-                break;
-            case CMD_LEAVE_MATCH:
-                leaveMatch();
-                break;
-            default:
-                break;
-=======
     while (true) {
         // loop until all command handled
         if (!Command::isCommandComplete(commandBuffer)){
@@ -120,7 +88,6 @@ void Player::handleCommand(){
                     ALOG_INFO("not handle %d", cmd.indicator);
                     break;
             }
->>>>>>> loop the handleCommand until all command was handle
         }
         removedSize -= evbuffer_get_length(commandBuffer);
         size_t eatSize = cmd.length+2;
@@ -220,22 +187,13 @@ void Player::match(){
             }
             delete data;
             evbuffer_free(evtjoinbuff);
-<<<<<<< HEAD
-
-=======
-            
->>>>>>> loop the handleCommand until all command was handle
         }
     }
 }
 
 void Player::leaveMatch(){
-<<<<<<< HEAD
-
-=======
     ALOG_INFO("[%p] leave a game group[%]", this, group);
     PlayerManager::instance().leaveGroup(this);
->>>>>>> loop the handleCommand until all command was handle
 }
 
 Group::Group(){
@@ -387,18 +345,7 @@ Group *PlayerManager::matchGroup(Player* player, MatchCommand &cmd){
         }
     }
     if (group == NULL){
-<<<<<<< HEAD
-        group = new Group();
-        groups.insert(group);
-        group->minimum = cmd.minimum;
-        group->maxima = cmd.maxima;
-        ALOG_INFO("[%p] group created(%d, %d)",
-                  group,
-                  group->minimum,
-                  group->maxima);
-=======
         group = newGroup(cmd.minimum, cmd.maxima);
->>>>>>> loop the handleCommand until all command was handle
     }
     group->add(player);
     player->group = group;
@@ -431,13 +378,8 @@ static void conn_writecb(struct bufferevent *bev, void *user_data) {
 static void conn_eventcb(struct bufferevent *bev, short events, void *user_data)
 {
     if (events & BEV_EVENT_ERROR) {
-<<<<<<< HEAD
-		ALOG_ERROR("Got an error on the connection: %s.",
-                  evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
-=======
 		ALOG_ERROR("Got an error on the connection: %s.", 
                    evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
->>>>>>> loop the handleCommand until all command was handle
 	}
 
 	// None of the other events can happen here,
