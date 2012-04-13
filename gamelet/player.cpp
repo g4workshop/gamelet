@@ -41,6 +41,7 @@ bool Player::attributeMatch(Player *other){
 }
 
 void Player::handleCommand(){
+<<<<<<< HEAD
     if (!Command::isCommandComplete(commandBuffer)){
         ALOG_DEBUG("[%p] command not complete", this);
         alogbuffer(commandBuffer);
@@ -71,26 +72,61 @@ void Player::handleCommand(){
                 break;
             default:
                 break;
+=======
+    while (true) {
+        // loop until all command handled
+        if (!Command::isCommandComplete(commandBuffer)){
+            ALOG_DEBUG("[%p] waiting command", this);
+            alogbuffer(commandBuffer);
+            return ;
+        }
+        
+        Command cmd;
+        cmd.decodeHeader(commandBuffer);
+        size_t removedSize = evbuffer_get_length(commandBuffer);
+        
+        if (cmd.indicator == SID_SERVER){
+            if (!cmd.parse(commandBuffer)){
+                ALOG_INFO("parse command error");
+                return ;
+            }
+            ALOG_INFO("[%p] command(%d)", this, (int)cmd.msgid); 
+            switch (cmd.msgid) {
+                case CMD_LOGIN:
+                    login();
+                    break;
+                case CMD_LOGOUT:
+                    logout();
+                    break;
+                case CMD_MATCH:
+                    match();
+                    break;
+                case CMD_LEAVE_MATCH:
+                    leaveMatch();
+                    break;
+                default:
+                    break;
+            }
+        }
+        else {
+            switch (cmd.indicator) {
+                case SID_PLAYER:
+                    forwardToPlayer(cmd.targetPlayer, cmd.length);
+                    break;
+                case SID_GROUP:
+                    forwardToGroup(cmd.length);
+                    break;
+                default:
+                    ALOG_INFO("not handle %d", cmd.indicator);
+                    break;
+            }
+>>>>>>> loop the handleCommand until all command was handle
         }
         removedSize -= evbuffer_get_length(commandBuffer);
         size_t eatSize = cmd.length+2;
         if (eatSize > removedSize){
             eatSize -= removedSize;
             evbuffer_drain(commandBuffer, eatSize);
-        }
-    }
-    else {
-        //ALOG_DEBUG("indicator = %d", (int)cmd.indicator);
-        switch (cmd.indicator) {
-            case SID_PLAYER:
-                forwardToPlayer(cmd.targetPlayer, cmd.length);
-                break;
-            case SID_GROUP:
-                forwardToGroup(cmd.length);
-                break;
-            default:
-                ALOG_INFO("not handle %d", cmd.indicator);
-                break;
         }
     }
 }
@@ -102,7 +138,7 @@ void Player::forwardToPlayer(std::string &userid, short length){
 void Player::forwardToGroup(short length){
     if (group == NULL)
     {
-        ALOG_INFO("[%p] group is null", this);
+        ALOG_ERROR("[%p] forward to null group", this);
         return ;
     }
     size_t sendLength = length+2;
@@ -112,7 +148,8 @@ void Player::forwardToGroup(short length){
         if( *it == this)
             continue;
         bufferevent_write((*it)->bev, data, sendLength);
-        ALOG_INFO("[%p] froward to group player[%p]", this, *it);
+        ALOG_INFO("[%p] froward (%d)data to group player[%p]", 
+                  this, sendLength, *it);
         alogbin(data, sendLength);
     }
     delete data;
@@ -183,13 +220,22 @@ void Player::match(){
             }
             delete data;
             evbuffer_free(evtjoinbuff);
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> loop the handleCommand until all command was handle
         }
     }
 }
 
 void Player::leaveMatch(){
+<<<<<<< HEAD
 
+=======
+    ALOG_INFO("[%p] leave a game group[%]", this, group);
+    PlayerManager::instance().leaveGroup(this);
+>>>>>>> loop the handleCommand until all command was handle
 }
 
 Group::Group(){
@@ -287,6 +333,25 @@ void PlayerManager::deletePlayer(Player *player){
     }
 }
 
+Group *PlayerManager::newGroup(int min, int max){
+    Group *group = new Group();
+    groups.insert(group);
+    group->minimum = min;
+    group->maxima = max; 
+    ALOG_INFO("[%p] group created(%d, %d)", 
+              group, 
+              group->minimum,
+              group->maxima);
+    return group;
+}
+
+void PlayerManager::deleteGroup(Group *group){
+    if (group != NULL){
+        groups.erase(group);
+        delete group;
+    }
+}
+
 bool PlayerManager::login(Player *player, LoginCommand &cmd){
     if (player != NULL){
         player->userid = cmd.userid;
@@ -322,6 +387,7 @@ Group *PlayerManager::matchGroup(Player* player, MatchCommand &cmd){
         }
     }
     if (group == NULL){
+<<<<<<< HEAD
         group = new Group();
         groups.insert(group);
         group->minimum = cmd.minimum;
@@ -330,6 +396,9 @@ Group *PlayerManager::matchGroup(Player* player, MatchCommand &cmd){
                   group,
                   group->minimum,
                   group->maxima);
+=======
+        group = newGroup(cmd.minimum, cmd.maxima);
+>>>>>>> loop the handleCommand until all command was handle
     }
     group->add(player);
     player->group = group;
@@ -339,8 +408,10 @@ Group *PlayerManager::matchGroup(Player* player, MatchCommand &cmd){
 bool PlayerManager::leaveGroup(Player *player){
     if(player->group != NULL){
         player->group->remove(player);
-        if (player->group->isEmpty())
-            groups.erase(player->group);
+        if (player->group->isEmpty()){
+            deleteGroup(player->group);
+        }
+        player->group = NULL;
     }
     return true;
 }
@@ -360,8 +431,13 @@ static void conn_writecb(struct bufferevent *bev, void *user_data) {
 static void conn_eventcb(struct bufferevent *bev, short events, void *user_data)
 {
     if (events & BEV_EVENT_ERROR) {
+<<<<<<< HEAD
 		ALOG_ERROR("Got an error on the connection: %s.",
                   evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
+=======
+		ALOG_ERROR("Got an error on the connection: %s.", 
+                   evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
+>>>>>>> loop the handleCommand until all command was handle
 	}
 
 	// None of the other events can happen here,

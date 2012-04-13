@@ -78,6 +78,9 @@ public:
     static PlayerManager &instance();
     Player *newPlayer(struct event_base *base, evutil_socket_t fd);
     void deletePlayer(Player *player);
+    Group *newGroup(int min, int max);
+    void deleteGroup(Group *group);
+    
     bool login(Player *player, LoginCommand &cmd);
     bool logout(Player *player);
     

@@ -48,18 +48,22 @@ bool Command::isCommandComplete(evbuffer *evbuf){
     return true;
 }
 
-void Command::decodeHeader(evbuffer *evbuf){
+// just decode from buffer, not drain it
+size_t Command::decodeHeader(evbuffer *evbuf){
+    size_t headerSize = 7;
     unsigned char buf[7];
     evbuffer_copyout(evbuf, buf, 5);
     length = get16(buf);
     indicator = buf[2];
-    short strlen = get16(buf+3);
+    size_t strlen = (size_t)get16(buf+3);
     if(strlen != 0){
         unsigned char *strbuf = new unsigned char[strlen];
         evbuffer_copyout(evbuf, strbuf, strlen);
         targetPlayer.assign(strbuf, strbuf+strlen);
         delete strbuf;
     }
+    headerSize += strlen;    
+    return headerSize;
 }
 
 bool Command::parse(evbuffer *evbuf){
@@ -211,15 +215,6 @@ bool MatchCommand::parse(evbuffer *evbuff){
     evbuffer_drain(evbuff, 3);
     parseObjNumber(evbuff, maxima);
     return true;
-}
-
-void MatchResponse::encode(evbuffer *evbuff){
-    evbuffer *tmp = Command::encode();
-    // @ TODO encode username
-    unsigned char count = 0;
-    evbuffer_add(tmp, &count, 1);
-    //
-    finalize(evbuff, tmp);
 }
 
 void PlayerJoinEvent::encode(evbuffer *evbuff){

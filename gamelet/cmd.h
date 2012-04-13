@@ -56,7 +56,7 @@ struct Command{
     static bool isCommandComplete(evbuffer *evbuf);
     static ServiceIndicator serviceIndicator(evbuffer *evbuf);
 
-    void decodeHeader(evbuffer *evbuf);
+    size_t decodeHeader(evbuffer *evbuf);
     // parse the command from buffer, and remove the parsed data fro evbuffer.
     bool parse(evbuffer *evbuf);
     bool parsePlayer(evbuffer *evbuf);
@@ -109,9 +109,7 @@ struct MatchCommand : public Command{
     int maxima;
 };
 
-struct MatchResponse : public Command{
-    MatchResponse(){ msgid = CMD_MATCH; }
-    void encode(evbuffer *evbuff);
+struct LeaveMatchCommand : public Command {
 };
 
 struct PlayerJoinEvent : public Command{
