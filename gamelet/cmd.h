@@ -10,111 +10,74 @@
 #define gamelet_cmd_h
 
 #include <string>
-#include <list>
+#include <vector>
+
+#include "packet.h"
+#include "sysdefine.h"
 
 class evbuffer;
-
-// indicator of server how to handle a client event
-enum ServiceIndicator{
-    SID_SERVER          = 1,    // server handle only
-    SID_PLAYER          = 2,    // to splecial player
-    SID_GROUP           = 3,    // to all player in the same game group
-    SID_GAME            = 4,    // to all player in this game
-    SID_ALL             = 5,    // to all login player
+enum ServiceIndicator {
+    SID_SERVER = 1,
+    SID_PLAYER = 2,
+    SID_GROUP  = 3,
+    SID_GAME   = 4,
+    SID_ALL    = 5,
 };
 
-// player action command
-enum PlayerCommandID{
-    CMD_LOGIN           = 1,    // player login
-    CMD_NPC_LOGIN       = 2,    // NPC login
-    CMD_LOGOUT          = 3,    // player logou
-    CMD_MATCH           = 4,    // try to match a game
-    CMD_LEAVE_MATCH     = 5,    // leave the match game
-    EVT_PLAYER_JOIN     = 6,    // casting event of one player joined
-    EVT_PLAYER_LEAVE    = 7,    // casting event of one player leave
-    EVT_GAME_STOP       = 8,    // it's enough player to open a game
-    EVT_GAME_START      = 9,    // the started game became not enough player
+class EvBufferStream : public G4InStreamIF{
+public:
+    EvBufferStream(evbuffer *evbuff);
+    virtual bool getbytes(unsigned char* buffer, unsigned short size);
+    virtual bool skip(unsigned short offset);
+private:
+    evbuffer *evbuff;
 };
 
-enum ObjectType{
-    OBJ_STRING = 1,
-    OBJ_NUMBER = 2,
-    OBJ_ARRAY  = 3,
-};
-
-enum NumberType{
-    NUM_C = 'c',
-    NUM_I = 'i',
-};
-
-struct Command{
-    static short get16(unsigned char *buf);
-    static int get32(unsigned char *buf);
-    static void set16(evbuffer *evbuff, short val);
-    static void set32(evbuffer *evbuff, int val);
-    
-    static bool isCommandComplete(evbuffer *evbuf);
-    static ServiceIndicator serviceIndicator(evbuffer *evbuf);
-
-    size_t decodeHeader(evbuffer *evbuf);
-    // parse the command from buffer, and remove the parsed data fro evbuffer.
-    bool parse(evbuffer *evbuf);
-    bool parsePlayer(evbuffer *evbuf);
-    bool parseMsgid(evbuffer *evbuf);
-    
-    //
-    static bool parseString(evbuffer *evbuf, std::string &str);
-    static bool parseObjString(evbuffer *evbuf, std::string &str);
-    static bool parseObjNumber(evbuffer *evbuf, int &num);
-    
-    
-    evbuffer* encode();
-    void finalize(evbuffer *evfinal, evbuffer *tmp);
-    
-    void encodeString(evbuffer *evbuff, std::string &str);
-    void encodeObjString(evbuffer *evbuff, std::string &str);
-    void encodeObjNumber(evbuffer *evbuff, char num);
-    void encodeObjNumber(evbuffer *evbuff, int num);
-    
-    short length;
+struct Header{
+    bool decode(evbuffer *evbuff);
+    size_t length;
     unsigned char indicator;
     std::string targetPlayer;
-    short msgid;
-    unsigned char result;
 };
 
+class Command : public G4NextPacket{
+public:
+    Command(){};
+    Command(unsigned short packetId) { _packetId = packetId; };
+    bool parse(evbuffer *evbuff);    
+};
+
+/*
 struct LoginCommand : public Command{
-    bool parse(evbuffer *evbuff);
-    
+    bool parsetlv();
     std::string userid;
     std::string passwd;
-    int mode;
+    unsigned char mode;
     std::string gameid;
 };
 
 struct LoginResponse : public Command{
-    LoginResponse(){ msgid = CMD_LOGIN; }
-    void encode(evbuffer *evbuff);
-    std::string username;
+    LoginResponse() { _packetId = G4_COMM_PLAYER_LOGIN; };
+    void packet(G4OutStream &stream);
 };
 
 struct LogoutCommand : public Command{
-    bool parse(evbuffer *evbuf){ return true; };
 };
 
 struct MatchCommand : public Command{
-    bool parse(evbuffer *evbuff);
-    
-    int minimum;
-    int maxima;
+    bool parsetlv();
+    unsigned int minimum;
+    unsigned int maxima;
 };
 
 struct LeaveMatchCommand : public Command {
+    bool parse(evbuffer *evbuff);
 };
 
 struct PlayerJoinEvent : public Command{
-    PlayerJoinEvent() { msgid = EVT_PLAYER_JOIN; };
-    void encode(evbuffer *evbuff);
-    std::list<std::string> playerid;
+    PlayerJoinEvent() { _packetId = G4_COMM_MATCH_CREATED; };
+    void packet(G4OutStream &stream);
+    std::vector<std::string> playerid;
 };
+ */
 #endif

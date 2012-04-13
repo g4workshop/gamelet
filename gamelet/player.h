@@ -22,7 +22,6 @@ class bufferevent;
 class evbuffer;
 
 class Group;
-class Command;
 
 // Player connection data
 struct Player{
@@ -33,10 +32,10 @@ struct Player{
     void forwardToPlayer(std::string &userid, short length);
     void forwardToGroup(short length);
     
-    void login();
-    void logout();
-    void match();
-    void leaveMatch();
+    void login(Command &cmd);
+    void logout(Command &cmd);
+    void match(Command &cmd);
+    void leaveMatch(Command &cmd);
     
    	// The bufferedevent for this player.
 	struct bufferevent *bev;
@@ -68,8 +67,8 @@ struct Group{
     bool isFull();
     
     std::list<Player*> players;
-    int minimum;
-    int maxima;
+    unsigned int minimum;
+    unsigned int maxima;
     time_t createdTime;
 };
 
@@ -81,10 +80,10 @@ public:
     Group *newGroup(int min, int max);
     void deleteGroup(Group *group);
     
-    bool login(Player *player, LoginCommand &cmd);
+    bool login(Player *player, std::string &userid, std::string &passwd);
     bool logout(Player *player);
     
-    Group *matchGroup(Player* player, MatchCommand &cmd);
+    Group *matchGroup(Player* player, unsigned int min, unsigned int max);
     bool leaveGroup(Player *player);
     
 private:

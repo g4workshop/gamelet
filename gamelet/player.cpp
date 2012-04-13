@@ -42,55 +42,53 @@ bool Player::attributeMatch(Player *other){
 
 void Player::handleCommand(){
     while (true) {
+        Header header;
         // loop until all command handled
-        if (!Command::isCommandComplete(commandBuffer)){
+        if (!header.decode(commandBuffer)){
             ALOG_DEBUG("[%p] waiting command", this);
             alogbuffer(commandBuffer);
             return ;
         }
         
-        Command cmd;
-        cmd.decodeHeader(commandBuffer);
         size_t removedSize = evbuffer_get_length(commandBuffer);
-        
-        if (cmd.indicator == SID_SERVER){
-            if (!cmd.parse(commandBuffer)){
-                ALOG_INFO("parse command error");
-                return ;
-            }
-            ALOG_INFO("[%p] command(%d)", this, (int)cmd.msgid); 
-            switch (cmd.msgid) {
-                case CMD_LOGIN:
-                    login();
+        if (header.indicator == SID_SERVER){
+            // skip the length filed
+            evbuffer_drain(commandBuffer, 2);
+            Command cmd;
+            cmd.parse(commandBuffer);
+            ALOG_INFO("[%p] command(%d)", this, (int)cmd._packetId); 
+            switch (cmd._packetId) {
+                case G4_COMM_PLAYER_LOGIN:
+                    login(cmd);
                     break;
-                case CMD_LOGOUT:
-                    logout();
+                case G4_COMM_PLAYER_LOGOUT:
+                    logout(cmd);
                     break;
-                case CMD_MATCH:
-                    match();
+                case G4_COMM_MATCH_REQUEST:
+                    match(cmd);
                     break;
-                case CMD_LEAVE_MATCH:
-                    leaveMatch();
+                case G4_COMM_PLAYER_LEAVE:
+                    leaveMatch(cmd);
                     break;
                 default:
                     break;
             }
         }
         else {
-            switch (cmd.indicator) {
+            switch (header.indicator) {
                 case SID_PLAYER:
-                    forwardToPlayer(cmd.targetPlayer, cmd.length);
+                    forwardToPlayer(header.targetPlayer, header.length);
                     break;
                 case SID_GROUP:
-                    forwardToGroup(cmd.length);
+                    forwardToGroup(header.length);
                     break;
                 default:
-                    ALOG_INFO("not handle %d", cmd.indicator);
+                    ALOG_INFO("not handle %d", (int)header.indicator);
                     break;
             }
         }
         removedSize -= evbuffer_get_length(commandBuffer);
-        size_t eatSize = cmd.length+2;
+        size_t eatSize = header.length+2;
         if (eatSize > removedSize){
             eatSize -= removedSize;
             evbuffer_drain(commandBuffer, eatSize);
@@ -122,32 +120,43 @@ void Player::forwardToGroup(short length){
     delete data;
 }
 
-void Player::login(){
-    LoginCommand loginCmd;
-    loginCmd.parse(commandBuffer);
-    if (PlayerManager::instance().login(this, loginCmd))
-    {
-        LoginResponse resp;
-        resp.targetPlayer = loginCmd.targetPlayer;
-        resp.result = 0;
-        evbuffer *respevbuff = evbuffer_new();
-        resp.encode(respevbuff);
-        bufferevent_write_buffer(bev, respevbuff);
-        evbuffer_free(respevbuff);
+void Player::login(Command &cmd){
+    G4TLV *tlv = NULL;
+    std::string userid;
+    std::string passwd;
+    
+    if ( (tlv = cmd.find(G4_KEY_PLAYER_ID)) )
+        tlv->gets(userid);
+    if ( (tlv = cmd.find(G4_KEY_PASSWORD)) )
+        tlv->gets(passwd);
+    
+    G4OutStream stream;
+    Command resp(G4_COMM_PLAYER_LOGIN);
+    if (PlayerManager::instance().login(this, userid, passwd)){
+        resp._result = 0;
         ALOG_INFO("[%p] login response", this);
     }
+    else {
+        resp._result = 1;
+        ALOG_INFO("[%p] login failed", this);
+    }
+    resp.encode(&stream);
+    bufferevent_write(bev, stream.buffer(), stream.size());
 }
 
-void Player::logout(){
-    LogoutCommand logouCmd;
-    logouCmd.parse(commandBuffer);
+void Player::logout(Command &){
     PlayerManager::instance().logout(this);
 }
 
-void Player::match(){
-    MatchCommand matchCmd;
-    matchCmd.parse(commandBuffer);
-    Group *group = PlayerManager::instance().matchGroup(this, matchCmd);
+void Player::match(Command &cmd){
+    G4TLV *tlv = NULL;
+    unsigned int min = 2, max = 2;
+    if ( (tlv = cmd.find(G4_KEY_MIN_PLAYER)) )
+        tlv->gets(userid);
+    if ( (tlv = cmd.find(G4_KEY_MAX_PLAYER)) )
+        tlv->gets(passwd);
+    
+    Group *group = PlayerManager::instance().matchGroup(this, min, max);
     if (!group) {
         ALOG_INFO("[%p] can't match a game", this);
         // response failed?
@@ -155,43 +164,34 @@ void Player::match(){
     }
     else {
         ALOG_INFO("[%p] match a game group[%p]", this, group);
-        PlayerJoinEvent pjevent;
-        pjevent.result = 0;
+        G4OutStream stream;
+        Command pjevent(G4_COMM_PLAYER_MATCHED);
+        pjevent._result = 0;
+        std::vector<std::string> playerid;
         for (auto it = group->players.begin(); it != group->players.end(); ++it) {
-            pjevent.playerid.push_back((*it)->userid);
+            playerid.push_back((*it)->userid);
         }
-        evbuffer *evtjoinbuff = evbuffer_new();
-        pjevent.encode(evtjoinbuff);
-        size_t length = evbuffer_get_length(evtjoinbuff);
-        unsigned char *data = new unsigned char[length];
-        evbuffer_copyout(evtjoinbuff, data, length);
+        pjevent.encode(&stream);
+        
         for (auto it = group->players.begin(); it != group->players.end(); ++it) {
-            //alogbin(data, length);
-            bufferevent_write((*it)->bev, data, length);
+            ALOG_INFO("[%p] send matched notify", (*it));
+            bufferevent_write((*it)->bev, stream.buffer(), stream.size());
         }
-        delete data;
-        evbuffer_free(evtjoinbuff);
 
         if (group->isEnoughToPlay()){
             // just modify the exsting message
-            pjevent.msgid = EVT_GAME_START;
-
-            evbuffer *evtjoinbuff = evbuffer_new();
-            pjevent.encode(evtjoinbuff);
-            size_t length = evbuffer_get_length(evtjoinbuff);
-            unsigned char *data = new unsigned char[length];
-            evbuffer_copyout(evtjoinbuff, data, length);
+            G4OutStream stream;
+            pjevent._packetId = G4_COMM_MATCH_CREATED;
+            pjevent.encode(&stream);
             for (auto it = group->players.begin(); it != group->players.end(); ++it) {
-                ALOG_INFO("[%p] send start notify", (*it));
-                bufferevent_write((*it)->bev, data, length);
+                ALOG_INFO("[%p] send created notify", (*it));
+                bufferevent_write((*it)->bev, stream.buffer(), stream.size());
             }
-            delete data;
-            evbuffer_free(evtjoinbuff);
         }
     }
 }
 
-void Player::leaveMatch(){
+void Player::leaveMatch(Command &){
     ALOG_INFO("[%p] leave a game group[%]", this, group);
     PlayerManager::instance().leaveGroup(this);
 }
@@ -310,11 +310,11 @@ void PlayerManager::deleteGroup(Group *group){
     }
 }
 
-bool PlayerManager::login(Player *player, LoginCommand &cmd){
+bool PlayerManager::login(Player *player, 
+                          std::string &userid, std::string &passwd){
     if (player != NULL){
-        player->userid = cmd.userid;
-        player->passwd = cmd.passwd;
-        player->gameid = cmd.gameid;
+        player->userid = userid;
+        player->passwd = passwd;
 
         player->loginTime = time(NULL);
         players.insert(player);
@@ -336,7 +336,7 @@ bool PlayerManager::logout(Player *player){
     return true;
 }
 
-Group *PlayerManager::matchGroup(Player* player, MatchCommand &cmd){
+Group *PlayerManager::matchGroup(Player* player, unsigned int min, unsigned int max){
     Group *group = NULL;
     for (auto it = groups.begin(); it != groups.end(); ++it){
         if ( !(*it)->isEnoughPlayer()){
@@ -345,7 +345,7 @@ Group *PlayerManager::matchGroup(Player* player, MatchCommand &cmd){
         }
     }
     if (group == NULL){
-        group = newGroup(cmd.minimum, cmd.maxima);
+        group = newGroup(min, max);
     }
     group->add(player);
     player->group = group;
