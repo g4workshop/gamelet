@@ -24,6 +24,8 @@
 #define G4_COMM_CONNECTED           0xf0
 #define G4_COMM_DISCONNECTED        0xf1
 
+#define G4_COMM_HELLO               0xff
+
 #define G4_KEY_PLAYER_ID            0x01
 #define G4_KEY_PLAYER_NAME          0x02
 #define G4_KEY_MATCH_ID             0x03

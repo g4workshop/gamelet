@@ -26,6 +26,7 @@ class Group;
 // Player connection data
 struct Player{
     Player();
+    const char* desc();
     bool isNPC();
     bool attributeMatch(Player *other);
     void handleCommand();
@@ -56,7 +57,7 @@ struct Player{
 
 struct Group{
     Group();
-    
+    const char *desc();
     bool add(Player *player);
     bool remove(Player *player);
     bool isEmpty();
@@ -65,6 +66,11 @@ struct Group{
     // if is enough player(not inclued NPC) return true;
     bool isEnoughPlayer();
     bool isFull();
+    
+    void notify(unsigned short cmd);
+    void notifyPlayerMatched();
+    void notifyGameStart();
+    void notifyGameStop();
     
     std::list<Player*> players;
     unsigned int minimum;

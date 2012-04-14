@@ -263,9 +263,9 @@ private:
 class G4NextPacket
 {
 public:
-    G4NextPacket():_packetId(0),_result(0){};
+    G4NextPacket():_packetId(0),_result(0),_serverIndicator(1){};
     G4NextPacket(unsigned short packetId, const char* destObject)
-    :_packetId(packetId), _result(0), _destObject(destObject){};
+    :_packetId(packetId), _result(0), _destObject(destObject), _serverIndicator(1){};
     virtual ~G4NextPacket();
 public:
     unsigned short _packetId;

@@ -12,6 +12,7 @@
 
 #include <errno.h>
 #include <string.h>
+#include <netinet/tcp.h>
 
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
@@ -27,6 +28,10 @@ Player::Player(){
     bev = NULL;
     commandBuffer = NULL;
     group = NULL;
+}
+
+const char* Player::desc(){
+    return userid.c_str();
 }
 
 bool Player::isNPC(){
@@ -97,7 +102,23 @@ void Player::handleCommand(){
 }
 
 void Player::forwardToPlayer(std::string &userid, short length){
-    ALOG_INFO("[%p] forward to %s", this, userid.c_str());
+    if (group == NULL){
+        ALOG_ERROR("[%p] forward to null group", this);
+        return ;
+    }
+    
+    size_t sendLength = length+2;
+    for (auto it = group->players.begin(); it != group->players.end(); ++it) {
+        if( (*it)->userid == userid){
+            unsigned char *data = new unsigned char[sendLength];
+            evbuffer_remove(commandBuffer, data, sendLength);
+            bufferevent_write((*it)->bev, data, sendLength);
+            delete data;
+            ALOG_INFO("[%p] froward (%d) bytes data to player[%p] in group", 
+                      this, sendLength, *it);
+            break;
+        }
+    }
 }
 
 void Player::forwardToGroup(short length){
@@ -113,9 +134,8 @@ void Player::forwardToGroup(short length){
         if( *it == this)
             continue;
         bufferevent_write((*it)->bev, data, sendLength);
-        ALOG_INFO("[%p] froward (%d)data to group player[%p]", 
+        ALOG_INFO("[%p] froward (%d) bytes data to group player[%p]", 
                   this, sendLength, *it);
-        alogbin(data, sendLength);
     }
     delete data;
 }
@@ -152,9 +172,9 @@ void Player::match(Command &cmd){
     G4TLV *tlv = NULL;
     unsigned int min = 2, max = 2;
     if ( (tlv = cmd.find(G4_KEY_MIN_PLAYER)) )
-        tlv->gets(userid);
+        tlv->get32(min);
     if ( (tlv = cmd.find(G4_KEY_MAX_PLAYER)) )
-        tlv->gets(passwd);
+        tlv->get32(max);
     
     Group *group = PlayerManager::instance().matchGroup(this, min, max);
     if (!group) {
@@ -164,29 +184,11 @@ void Player::match(Command &cmd){
     }
     else {
         ALOG_INFO("[%p] match a game group[%p]", this, group);
-        G4OutStream stream;
-        Command pjevent(G4_COMM_PLAYER_MATCHED);
-        pjevent._result = 0;
-        std::vector<std::string> playerid;
-        for (auto it = group->players.begin(); it != group->players.end(); ++it) {
-            playerid.push_back((*it)->userid);
-        }
-        pjevent.encode(&stream);
-        
-        for (auto it = group->players.begin(); it != group->players.end(); ++it) {
-            ALOG_INFO("[%p] send matched notify", (*it));
-            bufferevent_write((*it)->bev, stream.buffer(), stream.size());
-        }
+        group->notifyPlayerMatched();
 
         if (group->isEnoughToPlay()){
-            // just modify the exsting message
-            G4OutStream stream;
-            pjevent._packetId = G4_COMM_MATCH_CREATED;
-            pjevent.encode(&stream);
-            for (auto it = group->players.begin(); it != group->players.end(); ++it) {
-                ALOG_INFO("[%p] send created notify", (*it));
-                bufferevent_write((*it)->bev, stream.buffer(), stream.size());
-            }
+            ALOG_INFO("[%p] game[%p] start", this, group);
+            group->notifyGameStart();
         }
     }
 }
@@ -197,6 +199,12 @@ void Player::leaveMatch(Command &){
 }
 
 Group::Group(){
+}
+
+const char *Group::desc(){
+    static char buf[64];
+    sprintf(buf, "%p", this);
+    return buf;
 }
 
 bool Group::add(Player *player){
@@ -246,6 +254,36 @@ bool Group::isFull(){
     return players.size() >= maxima;
 }
 
+void Group::notify(unsigned short cmd){
+    G4OutStream stream;
+    Command pjevent;
+    pjevent._packetId = cmd;
+    pjevent._result = 0;
+    std::vector<std::string> playerid;
+    for (auto it = players.begin(); it != players.end(); ++it) {
+        playerid.push_back((*it)->userid);
+    }
+    pjevent.putss(G4_KEY_PLAYER_ID, playerid);
+    pjevent.encode(&stream);
+    
+    for (auto it = players.begin(); it != players.end(); ++it) {
+        ALOG_INFO("[%p] send notify(%d)", (*it), cmd);
+        bufferevent_write((*it)->bev, stream.buffer(), stream.size());
+    }
+}
+
+void Group::notifyPlayerMatched(){
+    notify(G4_COMM_PLAYER_MATCHED);
+}
+
+void Group::notifyGameStart(){
+    notify(G4_COMM_MATCH_CREATED);
+}
+
+void Group::notifyGameStop(){
+    notify(G4_COMM_MATCH_DISMISSED);
+}
+
 PlayerManager::PlayerManager(){
 }
 
@@ -267,9 +305,9 @@ Player *PlayerManager::newPlayer(struct event_base *base, evutil_socket_t fd) {
                           conn_writecb,
                           conn_eventcb,
                           player);
-
-        //bufferevent_enable(player->bev, EV_WRITE);
-        bufferevent_enable(player->bev, EV_READ);
+        bufferevent_enable(player->bev, EV_WRITE | EV_READ);
+        int one = 1;
+        setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof one);
         ALOG_INFO("[%p] new player", player);
     }
     else {
@@ -306,6 +344,7 @@ Group *PlayerManager::newGroup(int min, int max){
 void PlayerManager::deleteGroup(Group *group){
     if (group != NULL){
         groups.erase(group);
+        ALOG_INFO("[%p] group deleted", group);
         delete group;
     }
 }
@@ -337,6 +376,7 @@ bool PlayerManager::logout(Player *player){
 }
 
 Group *PlayerManager::matchGroup(Player* player, unsigned int min, unsigned int max){
+    leaveGroup(player);
     Group *group = NULL;
     for (auto it = groups.begin(); it != groups.end(); ++it){
         if ( !(*it)->isEnoughPlayer()){
@@ -355,6 +395,10 @@ Group *PlayerManager::matchGroup(Player* player, unsigned int min, unsigned int 
 bool PlayerManager::leaveGroup(Player *player){
     if(player->group != NULL){
         player->group->remove(player);
+        if (!player->group->isEnoughToPlay()){
+            ALOG_INFO("[%p] game[%p] stop", player, player->group);
+            player->group->notifyGameStop();
+        }
         if (player->group->isEmpty()){
             deleteGroup(player->group);
         }

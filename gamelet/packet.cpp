@@ -6,9 +6,9 @@
 //  Copyright (c) 2012年 G4Next. All rights reserved.
 //
 
-#import "packet.h"
-#import <sys/socket.h>
-#import <string.h>
+#include "packet.h"
+#include <sys/socket.h>
+#include <string.h>
 
 ////////////////////////////////////////////////////////////////////////////////////
 //

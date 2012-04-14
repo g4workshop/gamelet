@@ -47,37 +47,4 @@ public:
     bool parse(evbuffer *evbuff);    
 };
 
-/*
-struct LoginCommand : public Command{
-    bool parsetlv();
-    std::string userid;
-    std::string passwd;
-    unsigned char mode;
-    std::string gameid;
-};
-
-struct LoginResponse : public Command{
-    LoginResponse() { _packetId = G4_COMM_PLAYER_LOGIN; };
-    void packet(G4OutStream &stream);
-};
-
-struct LogoutCommand : public Command{
-};
-
-struct MatchCommand : public Command{
-    bool parsetlv();
-    unsigned int minimum;
-    unsigned int maxima;
-};
-
-struct LeaveMatchCommand : public Command {
-    bool parse(evbuffer *evbuff);
-};
-
-struct PlayerJoinEvent : public Command{
-    PlayerJoinEvent() { _packetId = G4_COMM_MATCH_CREATED; };
-    void packet(G4OutStream &stream);
-    std::vector<std::string> playerid;
-};
- */
 #endif
