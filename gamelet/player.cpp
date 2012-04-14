@@ -229,11 +229,11 @@ bool Group::isEmpty(){
 }
 
 bool Group::isEnoughToPlay(){
-    return (int)players.size() >= minimum;
+    return players.size() >= minimum;
 }
 
 bool Group::isEnoughPlayer(){
-    int count = 0;
+    size_t count = 0;
     for (auto it = players.begin(); it != players.end(); ++it) {
         if (!(*it)->isNPC()) {
             count ++;
@@ -243,7 +243,7 @@ bool Group::isEnoughPlayer(){
 }
 
 bool Group::isFull(){
-    return (int)players.size() >= maxima;
+    return players.size() >= maxima;
 }
 
 PlayerManager::PlayerManager(){
