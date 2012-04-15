@@ -26,7 +26,9 @@ class Group;
 // Player connection data
 struct Player{
     Player();
-    const char* desc();
+    void setPlayerId(std::string &playerid);
+    const char *getPlayerId() { return playerid.c_str(); }
+    const char *desc();
     bool isNPC();
     bool attributeMatch(Player *other);
     void handleCommand();
@@ -46,13 +48,16 @@ struct Player{
     // is the player belong a game group
     Group *group;
     
+    std::string description;
     // player attributes
-    std::string userid;
+    //std::string userid;
     std::string passwd;
     std::string gameid;
     bool NPC;
     time_t loginTime;
     std::map<std::string, std::string> attributes;
+private:
+    std::string playerid;
 };
 
 struct Group{
@@ -69,8 +74,10 @@ struct Group{
     
     void notify(unsigned short cmd);
     void notifyPlayerMatched();
-    void notifyGameStart();
-    void notifyGameStop();
+    void startGame();
+    void stopGame();
+    
+    std::string description;
     
     std::list<Player*> players;
     unsigned int minimum;

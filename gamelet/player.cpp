@@ -28,10 +28,23 @@ Player::Player(){
     bev = NULL;
     commandBuffer = NULL;
     group = NULL;
+    
+    static char address[64];
+    sprintf(address, "@%p", this);
+    description = address;
 }
 
+void Player::setPlayerId(std::string &playerid){
+//    userid = playerid;
+    this->playerid = playerid;
+    
+    static char address[64];
+    sprintf(address, "@%p", this);
+    description = playerid;
+    description += address;
+}
 const char* Player::desc(){
-    return userid.c_str();
+    return description.c_str();
 }
 
 bool Player::isNPC(){
@@ -50,8 +63,8 @@ void Player::handleCommand(){
         Header header;
         // loop until all command handled
         if (!header.decode(commandBuffer)){
-            ALOG_DEBUG("[%p] waiting command", this);
-            alogbuffer(commandBuffer);
+            ALOG_DEBUG("[%s] waiting command", desc());
+            alog_buffer(commandBuffer);
             return ;
         }
         
@@ -61,8 +74,9 @@ void Player::handleCommand(){
             evbuffer_drain(commandBuffer, 2);
             Command cmd;
             cmd.parse(commandBuffer);
-            ALOG_INFO("[%p] command(%d)", this, (int)cmd._packetId); 
+            ALOG_INFO("[%s] command(%d)", desc(), (int)cmd._packetId); 
             switch (cmd._packetId) {
+                case G4_COMM_NPC_LOGIN:
                 case G4_COMM_PLAYER_LOGIN:
                     login(cmd);
                     break;
@@ -88,7 +102,7 @@ void Player::handleCommand(){
                     forwardToGroup(header.length);
                     break;
                 default:
-                    ALOG_INFO("not handle %d", (int)header.indicator);
+                    ALOG_INFO("[%s] not handle %d", desc(), (int)header.indicator);
                     break;
             }
         }
@@ -103,19 +117,19 @@ void Player::handleCommand(){
 
 void Player::forwardToPlayer(std::string &userid, short length){
     if (group == NULL){
-        ALOG_ERROR("[%p] forward to null group", this);
+        ALOG_ERROR("[%s] forward to null group", desc());
         return ;
     }
     
     size_t sendLength = length+2;
     for (auto it = group->players.begin(); it != group->players.end(); ++it) {
-        if( (*it)->userid == userid){
+        if( userid == (*it)->getPlayerId()){
             unsigned char *data = new unsigned char[sendLength];
             evbuffer_remove(commandBuffer, data, sendLength);
             bufferevent_write((*it)->bev, data, sendLength);
             delete data;
-            ALOG_INFO("[%p] froward (%d) bytes data to player[%p] in group", 
-                      this, sendLength, *it);
+            ALOG_INFO("[%s] froward (%d) bytes data to player[%s] in group", 
+                      desc(), sendLength, (*it)->desc());
             break;
         }
     }
@@ -124,7 +138,7 @@ void Player::forwardToPlayer(std::string &userid, short length){
 void Player::forwardToGroup(short length){
     if (group == NULL)
     {
-        ALOG_ERROR("[%p] forward to null group", this);
+        ALOG_ERROR("[%s] forward to null group", desc());
         return ;
     }
     size_t sendLength = length+2;
@@ -134,31 +148,33 @@ void Player::forwardToGroup(short length){
         if( *it == this)
             continue;
         bufferevent_write((*it)->bev, data, sendLength);
-        ALOG_INFO("[%p] froward (%d) bytes data to group player[%p]", 
-                  this, sendLength, *it);
+        ALOG_INFO("[%s] froward (%d) bytes data to group player[%s]", 
+                  desc(), sendLength, (*it)->desc());
     }
     delete data;
 }
 
 void Player::login(Command &cmd){
-    G4TLV *tlv = NULL;
     std::string userid;
     std::string passwd;
     
-    if ( (tlv = cmd.find(G4_KEY_PLAYER_ID)) )
-        tlv->gets(userid);
-    if ( (tlv = cmd.find(G4_KEY_PASSWORD)) )
-        tlv->gets(passwd);
+    cmd.gets(G4_KEY_PLAYER_ID, userid);
+    cmd.gets(G4_KEY_PASSWORD, passwd);
     
     G4OutStream stream;
-    Command resp(G4_COMM_PLAYER_LOGIN);
+    Command resp(cmd._packetId);
+    if (cmd._packetId == G4_COMM_NPC_LOGIN)
+        NPC = true;
+    else 
+        NPC = false;
+    
     if (PlayerManager::instance().login(this, userid, passwd)){
         resp._result = 0;
-        ALOG_INFO("[%p] login response", this);
+        ALOG_INFO("[%s] %slogin response", desc(), NPC ? "NPC ":"");
     }
     else {
         resp._result = 1;
-        ALOG_INFO("[%p] login failed", this);
+        ALOG_INFO("[%s] %slogin failed", desc(), NPC ? "NPC ":"");
     }
     resp.encode(&stream);
     bufferevent_write(bev, stream.buffer(), stream.size());
@@ -169,42 +185,43 @@ void Player::logout(Command &){
 }
 
 void Player::match(Command &cmd){
-    G4TLV *tlv = NULL;
     unsigned int min = 2, max = 2;
-    if ( (tlv = cmd.find(G4_KEY_MIN_PLAYER)) )
-        tlv->get32(min);
-    if ( (tlv = cmd.find(G4_KEY_MAX_PLAYER)) )
-        tlv->get32(max);
+    cmd.get32(G4_KEY_MIN_PLAYER, min);
+    cmd.get32(G4_KEY_MAX_PLAYER, max);
     
     Group *group = PlayerManager::instance().matchGroup(this, min, max);
     if (!group) {
-        ALOG_INFO("[%p] can't match a game", this);
-        // response failed?
+        ALOG_INFO("[%s] can't match a game", desc());
+        G4OutStream stream;
+        Command resp(cmd._packetId);
+        resp._result = 1;
+        resp.encode(&stream);
+        bufferevent_write(bev, stream.buffer(), stream.size());
         return ;
     }
     else {
-        ALOG_INFO("[%p] match a game group[%p]", this, group);
+        ALOG_INFO("[%s] match a game group[%s]", desc(), group->desc());
         group->notifyPlayerMatched();
 
         if (group->isEnoughToPlay()){
-            ALOG_INFO("[%p] game[%p] start", this, group);
-            group->notifyGameStart();
+            ALOG_INFO("[%s] game[%s] start", desc(), group->desc());
+            group->startGame();
         }
     }
 }
 
 void Player::leaveMatch(Command &){
-    ALOG_INFO("[%p] leave a game group[%]", this, group);
     PlayerManager::instance().leaveGroup(this);
 }
 
 Group::Group(){
+    static char buf[64];
+    sprintf(buf, "%p", this);
+    description = buf;
 }
 
 const char *Group::desc(){
-    static char buf[64];
-    sprintf(buf, "%p", this);
-    return buf;
+    return description.c_str();
 }
 
 bool Group::add(Player *player){
@@ -261,13 +278,13 @@ void Group::notify(unsigned short cmd){
     pjevent._result = 0;
     std::vector<std::string> playerid;
     for (auto it = players.begin(); it != players.end(); ++it) {
-        playerid.push_back((*it)->userid);
+        playerid.push_back((*it)->getPlayerId());
     }
     pjevent.putss(G4_KEY_PLAYER_ID, playerid);
     pjevent.encode(&stream);
     
     for (auto it = players.begin(); it != players.end(); ++it) {
-        ALOG_INFO("[%p] send notify(%d)", (*it), cmd);
+        ALOG_INFO("[%s] send notify(%d)", (*it)->desc(), cmd);
         bufferevent_write((*it)->bev, stream.buffer(), stream.size());
     }
 }
@@ -276,12 +293,16 @@ void Group::notifyPlayerMatched(){
     notify(G4_COMM_PLAYER_MATCHED);
 }
 
-void Group::notifyGameStart(){
+void Group::startGame(){
     notify(G4_COMM_MATCH_CREATED);
 }
 
-void Group::notifyGameStop(){
+void Group::stopGame(){
     notify(G4_COMM_MATCH_DISMISSED);
+    for (auto it = players.begin(); it != players.end(); ++it) {
+        (*it)->group = NULL;
+    }
+    players.clear();
 }
 
 PlayerManager::PlayerManager(){
@@ -308,7 +329,7 @@ Player *PlayerManager::newPlayer(struct event_base *base, evutil_socket_t fd) {
         bufferevent_enable(player->bev, EV_WRITE | EV_READ);
         int one = 1;
         setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof one);
-        ALOG_INFO("[%p] new player", player);
+        ALOG_INFO("[%s] new player", player->desc());
     }
     else {
         deletePlayer(player);
@@ -324,7 +345,7 @@ void PlayerManager::deletePlayer(Player *player){
             bufferevent_free(player->bev);
         if(player->commandBuffer)
             evbuffer_free(player->commandBuffer);
-        ALOG_INFO("[%p] delete player", player);
+        ALOG_INFO("[%s] delete player", player->desc());
         delete player;
     }
 }
@@ -334,8 +355,8 @@ Group *PlayerManager::newGroup(int min, int max){
     groups.insert(group);
     group->minimum = min;
     group->maxima = max; 
-    ALOG_INFO("[%p] group created(%d, %d)", 
-              group, 
+    ALOG_INFO("[%s] group created(%d, %d)", 
+              group->desc(), 
               group->minimum,
               group->maxima);
     return group;
@@ -344,7 +365,7 @@ Group *PlayerManager::newGroup(int min, int max){
 void PlayerManager::deleteGroup(Group *group){
     if (group != NULL){
         groups.erase(group);
-        ALOG_INFO("[%p] group deleted", group);
+        ALOG_INFO("[%s] group deleted", group->desc());
         delete group;
     }
 }
@@ -352,14 +373,14 @@ void PlayerManager::deleteGroup(Group *group){
 bool PlayerManager::login(Player *player, 
                           std::string &userid, std::string &passwd){
     if (player != NULL){
-        player->userid = userid;
+        player->setPlayerId(userid);
         player->passwd = passwd;
 
         player->loginTime = time(NULL);
         players.insert(player);
-        ALOG_INFO("[%p] player login, userid(%s) password(%s)",
-                  player,
-                  player->userid.c_str(),
+        ALOG_INFO("[%s] player login, userid(%s) password(%s)",
+                  player->desc(),
+                  player->getPlayerId(),
                   player->passwd.c_str());
     }
 
@@ -368,7 +389,7 @@ bool PlayerManager::login(Player *player,
 
 bool PlayerManager::logout(Player *player){
     if (player != NULL){
-        ALOG_INFO("[%p] player logout", player);
+        ALOG_INFO("[%s] player logout", player->desc());
         leaveGroup(player);
         players.erase(player);
     }
@@ -379,11 +400,19 @@ Group *PlayerManager::matchGroup(Player* player, unsigned int min, unsigned int 
     leaveGroup(player);
     Group *group = NULL;
     for (auto it = groups.begin(); it != groups.end(); ++it){
-        if ( !(*it)->isEnoughPlayer()){
+        if (player->isNPC() && (*it)->isEnoughToPlay()){
+            // NPC do not try to replase other NPC
+            continue;
+        }
+        if ( !(*it)->isEnoughToPlay()){
             group = *it;
             break;
         }
     }
+    // NPC can't create game group
+    if (group == NULL && player->isNPC())
+        return NULL;
+    
     if (group == NULL){
         group = newGroup(min, max);
     }
@@ -394,10 +423,11 @@ Group *PlayerManager::matchGroup(Player* player, unsigned int min, unsigned int 
 
 bool PlayerManager::leaveGroup(Player *player){
     if(player->group != NULL){
+        ALOG_INFO("[%s] leave group[%s]", player->desc(), player->group->desc());
         player->group->remove(player);
         if (!player->group->isEnoughToPlay()){
-            ALOG_INFO("[%p] game[%p] stop", player, player->group);
-            player->group->notifyGameStop();
+            ALOG_INFO("[%s] game[%s] stop", player->desc(), player->group->desc());
+            player->group->stopGame();
         }
         if (player->group->isEmpty()){
             deleteGroup(player->group);
